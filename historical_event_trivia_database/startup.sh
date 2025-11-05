@@ -106,10 +106,6 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${DB_USER};
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO ${DB_USER};
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TYPES TO ${DB_USER};
 
--- If you want the user to be able to create objects without restrictions,
--- you can make them the owner of the public schema (optional but effective)
--- ALTER SCHEMA public OWNER TO ${DB_USER};
-
 -- Alternative: Grant all privileges on schema public to the user
 GRANT ALL ON SCHEMA public TO ${DB_USER};
 
@@ -129,17 +125,29 @@ GRANT CREATE ON SCHEMA public TO ${DB_USER};
 \dn+ public
 EOF
 
-# Save connection command to a file
+# Apply schema and seed using appuser on the configured port
+echo "Applying database schema (startup.sql) and seed data (seed.sql)..."
+
+# Write connection helper
 echo "psql postgresql://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}" > db_connection.txt
 echo "Connection string saved to db_connection.txt"
 
-# Save environment variables to a file
+# Execute SQL files using appuser
+PGPASSWORD="${DB_PASSWORD}" ${PG_BIN}/psql -h localhost -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} -v ON_ERROR_STOP=1 -f startup.sql
+echo "✓ Schema applied"
+
+PGPASSWORD="${DB_PASSWORD}" ${PG_BIN}/psql -h localhost -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} -v ON_ERROR_STOP=1 -f seed.sql
+echo "✓ Seed data inserted"
+
+# Save environment variables to a file for the DB visualizer
 cat > db_visualizer/postgres.env << EOF
-export POSTGRES_URL="postgresql://localhost:${DB_PORT}/${DB_NAME}"
+export POSTGRES_HOST="localhost"
+export POSTGRES_PORT="${DB_PORT}"
+export POSTGRES_DB="${DB_NAME}"
 export POSTGRES_USER="${DB_USER}"
 export POSTGRES_PASSWORD="${DB_PASSWORD}"
-export POSTGRES_DB="${DB_NAME}"
-export POSTGRES_PORT="${DB_PORT}"
+export POSTGRES_URL="postgresql://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}"
+export DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}"
 EOF
 
 echo "PostgreSQL setup complete!"
@@ -147,10 +155,8 @@ echo "Database: ${DB_NAME}"
 echo "User: ${DB_USER}"
 echo "Port: ${DB_PORT}"
 echo ""
-
 echo "Environment variables saved to db_visualizer/postgres.env"
 echo "To use with Node.js viewer, run: source db_visualizer/postgres.env"
-
 echo "To connect to the database, use one of the following commands:"
 echo "psql -h localhost -U ${DB_USER} -d ${DB_NAME} -p ${DB_PORT}"
 echo "$(cat db_connection.txt)"
