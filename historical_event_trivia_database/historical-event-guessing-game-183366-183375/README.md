@@ -22,6 +22,11 @@ Database quick start:
    - Indexes: events(month, day), clues(event_id, order_index), game_sessions(event_id)
    - Seed ensures one event matches today’s month/day and includes two additional events with five clues each.
 
+Integration notes:
+- Backend expects DATABASE_URL or POSTGRES_* to match the values above.
+- Frontend calls the backend with credentials (cookies). Ensure backend CORS allows http://localhost:3000 and sets cookies with SameSite=Lax (local dev).
+- See backend/INTEGRATION.md for detailed cross-container setup.
+
 DB Viewer (optional):
 - A simple database viewer is available under historical_event_trivia_database/db_visualizer.
 - To use:
